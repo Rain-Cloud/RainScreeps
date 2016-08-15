@@ -9,22 +9,10 @@ var miner = {
         if(creep.memory.task.type == TASK_IDLE){
             var cratio = 0;
             var chosen = null;
+
+            creep.memory.task.type = TASK_MINE;
+            creep.memory.task.target = creep.room.find(FIND_SOURCES)[0].id;
             
-            for(var name in Memory.rooms[creep.room.name].sources){
-                var src = Game.getObjectById(name);
-                var free = Memory.rooms[creep.room.name].sources[name].free;
-                var ratio = helpers.CountFreeSquares(src) / parseFloat(free);
-                
-                if(ratio > cratio){
-                    cratio = ratio;
-                    chosen = name;
-                }
-            }
-            
-            if(chosen != null){
-                creep.memory.task.type = TASK_MINE;
-                creep.memory.task.target = chosen;
-            }
         }
         
         if(creep.memory.task.type == TASK_MINE){
@@ -65,32 +53,28 @@ var miner = {
         }
     },
     assign: function(creep){
-        creep.memory.role = ROLE_MINER;
-        creep.memory.task = {
-            type: TASK_IDLE,
-            target: null
-        };
-        creep.memory.beforeDeathTicks = 0;
-        creep.memory.beforeDeath = BEFORE_DEATH_RESPAWN;
+        if(_.isString(creep)){
+            return {
+                role: ROLE_MINER,
+                origin: creep,
+                task: {
+                    type: TASK_IDLE,
+                    target: null
+                }
+            };
+        }else{
+            creep.memory.role = ROLE_MINER;
+            creep.memory.task = {
+                type: TASK_IDLE,
+                target: null
+            };
+        }
     }
 }
 
-
-var roles = [miner];
-
-global.createScreep = function(spawn, role){
-    for(var i = 0; i < roles.length; i++){
-        if(roles[i].role == role){
-            return Game.spawns[spawn].createCreep(roles[i].parts, null, {
-                role: role,
-                task: {
-                    type: TASK_IDLE,
-                    target: null,
-                    beforeDeathTicks: 0,
-                    beforeDeath: BEFORE_DEATH_RESPAWN
-                }
-            });
-        }
+global.assignCreep = function(creep, role){
+    if(role == ROLE_MINER){
+        miner.assign(Game.creeps[creep]);
     }
 }
 

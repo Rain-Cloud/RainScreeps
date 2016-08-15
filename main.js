@@ -1,25 +1,35 @@
 var _globals = require("globals");
-var roleMiner = require('role.miner');
-var helpers = require("helpers");
+var spawnAI = require("ai.spawn");
+var spawn1AI = spawnAI.create("Spawn1");
+var roleMiner = require("role.miner");
+var gameSpawnAi = require("game.spawn.ai");
 
-for(var name in Game.rooms){
-    var room = Game.rooms[name];
-    var sources = room.find(FIND_SOURCES);
-    room.memory.sources = {};
-    
-    for(var i = 0; i < sources.length; i++){
-        room.memory.sources[sources[i].id] = {};
-        room.memory.sources[sources[i].id].free = helpers.CountOpenSquares(sources[i]);
-        room.memory.sources[sources[i].id].avail = helpers.CountFreeSquares(sources[i]);
-    }
-}
+var gameInit = require("game.init");
+var gameRoom = require("game.room");
+
+gameInit.preset();
 
 module.exports.loop = function () {
+    spawn1AI.tick();
     
     for(var name in Game.creeps) {
         var creep = Game.creeps[name];
+    
         if(creep.memory.role == ROLE_MINER){
             roleMiner.miner.run(creep);
+        }
+    }
+    
+    for(var name in Game.rooms){
+        gameInit.roomAnalysis(Game.rooms[name]);
+        gameInit.roomPathing(Game.rooms[name]);
+        gameRoom.update(Game.rooms[name]);
+        
+        if(Game.rooms[name].memory.owned){
+            // Run spawn AI
+            for(var i = 0; i < Game.rooms[name].memory.spawns.length; i++){
+                gameSpawnAi.run(Game.rooms[name].memory.spawns[i])
+            }
         }
     }
 }
