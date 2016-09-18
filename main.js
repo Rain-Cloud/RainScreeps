@@ -1,34 +1,41 @@
-var _globals = require("globals");
-var spawnAI = require("ai.spawn");
-var spawn1AI = spawnAI.create("Spawn1");
-var roleMiner = require("role.miner");
-var gameSpawnAi = require("game.spawn.ai");
+let _constants = require("brain.constants");
+let brain = require("brain");
+let brainPathing = require("brain.pathing");
+let brainPlan = require("brain.plan");
+let brainActivity = require("brain.activity");
 
-var gameInit = require("game.init");
-var gameRoom = require("game.room");
+global.brain = brain;
+global.activity = brainActivity;
 
-gameInit.preset();
+if(!Memory.settings){
+    brain.memset(Game.rooms[Object.keys(Game.rooms)[0]], true);
+}
 
 module.exports.loop = function () {
-    spawn1AI.tick();
-    
-    for(var name in Game.creeps) {
-        var creep = Game.creeps[name];
-    
-        if(creep.memory.role == ROLE_MINER){
-            roleMiner.miner.run(creep);
-        }
-    }
-    
-    for(var name in Game.rooms){
-        gameInit.roomAnalysis(Game.rooms[name]);
-        gameInit.roomPathing(Game.rooms[name]);
-        gameRoom.update(Game.rooms[name]);
+    PathFinder.use(true);
+ 
+    for(let roomName in Game.rooms){
+        let room = Game.rooms[roomName];
         
-        if(Game.rooms[name].memory.owned){
-            // Run spawn AI
-            for(var i = 0; i < Game.rooms[name].memory.spawns.length; i++){
-                gameSpawnAi.run(Game.rooms[name].memory.spawns[i])
+        if(room.memory){
+            if(!room.memory.planning){
+                brainActivity.assessDevelopmentLevel(room); // Assesses the room's current development level (can only increase over time)
+                brainActivity.assessDemands(room);          // Perform a demands assessment
+                brainActivity.assessQueue(room);            // Prepares the build and spawn queue for dequeueing
+                brainActivity.siteProcessing(room);         // Processes current build sites
+                
+                brainActivity.creepAI(room);                // Process creep AI for the tick
+                brainActivity.buildingAI(room);             // Process building AI for the tick
+            }else{
+                // Attempt to progress to the next plan segment
+                let res = brainPlan.run(room);
+                if(res === 0){
+                    // Perform an assessment of the room's needs immediately after it's finished
+                    room.memory.deferred.assessDemands = Game.time + Memory.settings.frequencies.assessDemands;
+                    brainActivity.assessDemands(room);
+                }else if(res > 0){
+                    // Error
+                }
             }
         }
     }
